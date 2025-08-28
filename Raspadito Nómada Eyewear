@@ -1,0 +1,150 @@
+<!doctype html>
+
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Raspadito Interactivo - Nómada Eyewear</title>
+  <style>
+    :root{--card-w:360px;--card-h:540px}
+    body{font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:12px;background:linear-gradient(180deg,#f6f9ff,#eef6ff)}
+    .wrapper{max-width:420px;width:100%}
+    .card{width:var(--card-w);height:var(--card-h);margin:0 auto;background:#fff;border-radius:18px;box-shadow:0 8px 30px rgba(17,24,39,0.12);overflow:hidden;padding:18px;display:flex;flex-direction:column;gap:12px}
+    .header{display:flex;align-items:center;gap:12px}
+    .brand{width:56px;height:56px;border-radius:12px;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;overflow:hidden;}
+    .brand img{width:100%;height:100%;object-fit:contain;}
+    h1{font-size:18px;margin:0}
+    p.lead{margin:0;color:#475569;font-size:13px}.scratch-area{flex:1;display:grid;place-items:center}
+.ticket{width:100%;max-width:320px;background:linear-gradient(180deg,#fff,#fcfcff);border-radius:12px;padding:14px;box-shadow:0 4px 18px rgba(2,6,23,0.06);position:relative}
+
+.prize{height:160px;border-radius:8px;background:linear-gradient(90deg,#fff,#fff);display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:700;color:#0f172a;text-align:center}
+.hint{font-size:12px;color:#6b7280;margin-top:8px}
+
+canvas{position:absolute;left:14px;right:14px;top:76px;border-radius:8px}
+
+.controls{display:flex;gap:8px}
+button{border:0;padding:10px 12px;border-radius:10px;background:#0ea5a4;color:#04202a;font-weight:600;cursor:pointer}
+button.ghost{background:#eef2ff;color:#334155}
+
+.overlay{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none}
+
+.confetti{position:absolute;inset:0;pointer-events:none}
+
+.small{font-size:12px;color:#58616b}
+
+@media (max-width:420px){:root{--card-w:320px;--card-h:520px}}
+
+  </style>
+</head>
+<body>
+  <div class="wrapper">
+    <div class="card" role="application" aria-label="Raspadito interactivo">
+      <div class="header">
+        <div class="brand">
+          <!-- Reemplaza con la URL de tu logo -->
+          <img src="https://via.placeholder.com/56x56.png?text=N" alt="Logo Nómada Eyewear" />
+        </div>
+        <div>
+          <h1>Raspadito Nómada Eyewear</h1>
+          <p class="lead">Raspa con el dedo para descubrir tu premio. ¡Compártelo con amigos!</p>
+        </div>
+      </div><div class="scratch-area">
+    <div class="ticket" id="ticket">
+      <div class="prize" id="prize">🎉 ¡GRAN PREMIO! 🎉</div>
+      <div class="hint small">Raspa aquí: desliza con el dedo o el cursor hasta descubrir al menos el 50%.</div>
+      <canvas id="scratchCanvas" width="292" height="160" aria-label="Capa para raspar"></canvas>
+    </div>
+    <div class="overlay"></div>
+  </div>
+
+  <div class="controls">
+    <button id="resetBtn" class="ghost">Reiniciar</button>
+    <button id="revealBtn">Revelar</button>
+    <button id="shareBtn">Compartir en WhatsApp</button>
+  </div>
+
+  <div class="small">Nota: sube este archivo a GitHub Pages o Netlify y reemplaza la URL en el botón de WhatsApp.</div>
+</div>
+
+  </div>  <div class="confetti" id="confettiRoot"></div>  <script>
+    const PRIZES = [
+      '2×1 en lentes 👓',
+      '30% de descuento en tu ticket final 💰',
+      'Armazones a $1 peso mexicano 🕶️',
+      '¡Lentes gratis 😱! (muy raro que salga)'
+    ];
+    const CLEAR_THRESHOLD = 0.5;
+
+    const canvas = document.getElementById('scratchCanvas');
+    const ctx = canvas.getContext('2d');
+    const prizeEl = document.getElementById('prize');
+    const resetBtn = document.getElementById('resetBtn');
+    const revealBtn = document.getElementById('revealBtn');
+    const shareBtn = document.getElementById('shareBtn');
+    const confettiRoot = document.getElementById('confettiRoot');
+
+    function fitCanvas() {
+      const ticket = document.getElementById('ticket');
+      const prizeRect = prizeEl.getBoundingClientRect();
+      canvas.width = Math.floor(prizeRect.width);
+      canvas.height = Math.floor(prizeRect.height);
+      canvas.style.left = prizeRect.left - ticket.getBoundingClientRect().left + 'px';
+      canvas.style.top = prizeRect.top - ticket.getBoundingClientRect().top + 'px';
+      drawOverlay();
+    }
+
+    function drawOverlay() {
+      ctx.globalCompositeOperation = 'source-over';
+      ctx.fillStyle = '#bdbdbd';
+      ctx.fillRect(0,0,canvas.width,canvas.height);
+      for (let i=0;i<500;i++){
+        ctx.fillStyle = `rgba(255,255,255,${Math.random()*0.06})`;
+        ctx.fillRect(Math.random()*canvas.width,Math.random()*canvas.height,Math.random()*2+1,Math.random()*2+1);
+      }
+      ctx.globalCompositeOperation = 'destination-out';
+    }
+
+    function pickPrize() {
+      const urlPr = new URLSearchParams(location.search).get('prize');
+      if (urlPr) return decodeURIComponent(urlPr);
+      if (Math.random() < 0.01) return PRIZES[3];
+      return PRIZES[Math.floor(Math.random()*3)];
+    }
+
+    function setPrize() { prizeEl.textContent = pickPrize(); }
+
+    let isDrawing = false, lastPos = null;
+
+    function getPointerPos(e) {
+      const rect = canvas.getBoundingClientRect();
+      const touch = e.touches ? e.touches[0] : null;
+      const clientX = touch ? touch.clientX : e.clientX;
+      const clientY = touch ? touch.clientY : e.clientY;
+      return {x: clientX - rect.left, y: clientY - rect.top};
+    }
+
+    function drawCircle(x,y,r){ ctx.beginPath(); ctx.arc(x,y,r,0,Math.PI*2); ctx.fill(); }
+
+    function pointerDown(e){ e.preventDefault(); isDrawing=true; lastPos=getPointerPos(e); drawCircle(lastPos.x,lastPos.y,22); }
+    function pointerMove(e){ if(!isDrawing) return; const p=getPointerPos(e); const dx=p.x-lastPos.x; const dy=p.y-lastPos.y; const dist=Math.hypot(dx,dy); const steps=Math.ceil(dist/6); for(let i=0;i<steps;i++){ const x=lastPos.x+dx*(i/steps); const y=lastPos.y+dy*(i/steps); drawCircle(x,y,20);} lastPos=p; if(getClearedRatio()>=CLEAR_THRESHOLD) revealFully(); }
+    function pointerUp(e){ isDrawing=false; lastPos=null;}
+    function getClearedRatio(){ const img=ctx.getImageData(0,0,canvas.width,canvas.height).data; let cleared=0,total=0; for(let i=3;i<img.length;i+=16){ total++; if(img[i]===0) cleared++;} return cleared/total;}
+    function revealFully(){ ctx.clearRect(0,0,canvas.width,canvas.height); playWin();}
+    function reset(){ setPrize(); drawOverlay(); confettiRoot.innerHTML='';}
+
+    function playWin(){ for(let i=0;i<40;i++){ const el=document.createElement('div'); el.textContent=['🎉','✨','🥳','💸'][Math.floor(Math.random()*4)]; el.style.position='absolute'; el.style.left=Math.random()*100+'%'; el.style.top='-10%'; el.style.fontSize=(12+Math.random()*22)+'px'; el.style.opacity=0.95; el.style.transform=`translateY(0) rotate(${Math.random()*360}deg)`; el.style.transition=`transform 1.6s cubic-bezier(.2,.8,.2,1), top 1.6s linear, opacity 1.6s linear`; confettiRoot.appendChild(el); requestAnimationFrame(()=>{ el.style.top=(80+Math.random()*40)+'%'; el.style.transform=`translateY(0) rotate(${Math.random()*720}deg)`; el.style.opacity=0.95; }); setTimeout(()=>el.style.opacity=0,1600); } }
+
+    canvas.addEventListener('pointerdown', pointerDown);
+    window.addEventListener('pointermove', pointerMove);
+    window.addEventListener('pointerup', pointerUp);
+    canvas.addEventListener('touchstart', function(e){ canvas.setPointerCapture && canvas.setPointerCapture(e.pointerId); pointerDown(e); }, {passive:false});
+    resetBtn.addEventListener('click', reset);
+    revealBtn.addEventListener('click', revealFully);
+    shareBtn.addEventListener('click', ()=>{
+      const waUrl='https://wa.me/?text='+encodeURIComponent('¡Mira este raspadito! https://TU_USUARIO.github.io/raspadito-nomada/raspadito_interactivo.html?prize='+encodeURIComponent(prizeEl.textContent));
+      window.open(waUrl,'_blank');
+    });
+
+    window.addEventListener('load',()=>{ setPrize(); fitCanvas(); window.addEventListener('resize', fitCanvas); });
+  </script></body>
+</html>
